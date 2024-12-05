@@ -2,7 +2,6 @@ import java.io.*;
 import java.util.*;
 
 public class ProblemaP3 {
-    // Node class representing each cell
     static class Node {
         int id, x, y;
         Set<String> peptides;
@@ -15,13 +14,12 @@ public class ProblemaP3 {
         }
     }
 
-    // Graph class using adjacency list
     static class Graph {
         Map<Integer, List<Integer>> adjacencyList;
 
         public Graph(int n) {
             adjacencyList = new HashMap<>();
-            for (int i = 0; i < n; i++) {
+            for (int i = 1; i <= n; i++) {
                 adjacencyList.put(i, new ArrayList<>());
             }
         }
@@ -34,6 +32,18 @@ public class ProblemaP3 {
         public List<Integer> getNeighbors(int u) {
             return adjacencyList.get(u);
         }
+
+        public Set<int[]> getEdges() {
+            Set<int[]> edges = new HashSet<>();
+            for (int u : adjacencyList.keySet()) {
+                for (int v : adjacencyList.get(u)) {
+                    if (u < v) { // Ensure each edge is added only once
+                        edges.add(new int[]{u, v});
+                    }
+                }
+            }
+            return edges;
+        }
     }
 
     public static void main(String[] args) throws IOException {
@@ -41,7 +51,6 @@ public class ProblemaP3 {
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(System.out))
         ) {
-            // Process each test case
             int testCases = Integer.parseInt(reader.readLine().trim());
             for (int t = 0; t < testCases; t++) {
                 handleSingleTestCase(reader, writer);
@@ -51,17 +60,20 @@ public class ProblemaP3 {
 
     private static void handleSingleTestCase(BufferedReader reader, BufferedWriter writer) throws IOException {
         String[] params = reader.readLine().trim().split(" ");
-        int n = Integer.parseInt(params[0]); // Number of nodes
-        int d = Integer.parseInt(params[1]); // Maximum distance
-        int k = Math.max(2, (int) Math.sqrt(n)); // Dynamic k for Baker's technique
+        int n = Integer.parseInt(params[0]);
+        int d = Integer.parseInt(params[1]);
 
         List<Node> nodes = readNodes(reader, n);
         Graph graph = buildGraph(nodes, d);
 
-        int[] layer = assignLayers(graph, n, k);
-        int[] group = assignGroups(graph, n, layer, k);
+        int[] groupAssignment = findMinimumCliqueCover(graph, n);
 
-        writeResults(writer, nodes, group);
+        // Print results in the required format
+        for (int i = 1; i <= n; i++) {
+            writer.write(i + " " + groupAssignment[i]);
+            writer.newLine();
+        }
+        writer.flush();
     }
 
     private static List<Node> readNodes(BufferedReader reader, int n) throws IOException {
@@ -78,13 +90,12 @@ public class ProblemaP3 {
     }
 
     private static Graph buildGraph(List<Node> nodes, int d) {
-        int n = nodes.size();
-        Graph graph = new Graph(n);
+        Graph graph = new Graph(nodes.size());
 
-        for (int i = 0; i < n; i++) {
-            for (int j = i + 1; j < n; j++) {
+        for (int i = 0; i < nodes.size(); i++) {
+            for (int j = i + 1; j < nodes.size(); j++) {
                 if (canConnect(nodes.get(i), nodes.get(j), d)) {
-                    graph.addEdge(i, j);
+                    graph.addEdge(nodes.get(i).id, nodes.get(j).id);
                 }
             }
         }
@@ -92,80 +103,53 @@ public class ProblemaP3 {
     }
 
     private static boolean canConnect(Node a, Node b, int d) {
-        double distance = Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
-        return distance <= d && !Collections.disjoint(a.peptides, b.peptides);
+        double distance = Math.hypot(a.x - b.x, a.y - b.y);
+        boolean hasSharedPeptides = !Collections.disjoint(a.peptides, b.peptides);
+        return distance <= d && hasSharedPeptides;
     }
 
-    private static int[] assignLayers(Graph graph, int n, int k) {
-        int[] layer = new int[n];
-        Arrays.fill(layer, -1);
+    private static int[] findMinimumCliqueCover(Graph graph, int n) {
+        int[] groupAssignment = new int[n + 1];
+        Arrays.fill(groupAssignment, -1);
+        int currentGroup = 1;
 
-        Queue<Integer> queue = new LinkedList<>();
-        queue.add(0);
-        layer[0] = 0;
-
-        while (!queue.isEmpty()) {
-            int node = queue.poll();
-            for (int neighbor : graph.getNeighbors(node)) {
-                if (layer[neighbor] == -1) {
-                    layer[neighbor] = (layer[node] + 1) % k;
-                    queue.add(neighbor);
+        for (int node = 1; node <= n; node++) {
+            if (groupAssignment[node] == -1) { // If the node is not yet assigned
+                Set<Integer> clique = findClique(graph, node, groupAssignment);
+                for (int member : clique) {
+                    groupAssignment[member] = currentGroup; // Assign the current group to all members of the clique
                 }
+                currentGroup++;
             }
         }
-        return layer;
+        return groupAssignment;
     }
 
-    private static int[] assignGroups(Graph graph, int n, int[] layer, int k) {
-        int[] group = new int[n];
-        Arrays.fill(group, -1);
-        int groupId = 1;
-
-        for (int l = 0; l < k; l++) {
-            List<Integer> layerNodes = new ArrayList<>();
-            for (int i = 0; i < n; i++) {
-                if (layer[i] == l) {
-                    layerNodes.add(i);
-                }
-            }
-            for (int node : layerNodes) {
-                if (group[node] == -1) {
-                    assignGroup(graph, group, node, groupId++);
-                }
-            }
-        }
-
-        // Assign groups to disconnected nodes
-        for (int i = 0; i < n; i++) {
-            if (group[i] == -1) {
-                group[i] = groupId++;
-            }
-        }
-
-        return group;
-    }
-
-    private static void assignGroup(Graph graph, int[] group, int startNode, int groupId) {
+    private static Set<Integer> findClique(Graph graph, int startNode, int[] groupAssignment) {
+        Set<Integer> clique = new HashSet<>();
         Queue<Integer> queue = new LinkedList<>();
         queue.add(startNode);
-        group[startNode] = groupId;
 
         while (!queue.isEmpty()) {
             int node = queue.poll();
+            if (clique.contains(node)) continue;
+            clique.add(node);
+
             for (int neighbor : graph.getNeighbors(node)) {
-                if (group[neighbor] == -1) {
-                    group[neighbor] = groupId;
+                if (groupAssignment[neighbor] == -1 && allInClique(graph, neighbor, clique)) {
                     queue.add(neighbor);
                 }
             }
         }
+        return clique;
     }
 
-    private static void writeResults(BufferedWriter writer, List<Node> nodes, int[] group) throws IOException {
-        for (int i = 0; i < nodes.size(); i++) {
-            writer.write(nodes.get(i).id + " " + group[i]);
-            writer.newLine();
+    private static boolean allInClique(Graph graph, int node, Set<Integer> clique) {
+        for (int member : clique) {
+            if (!graph.getNeighbors(member).contains(node)) {
+                return false;
+            }
         }
-        writer.flush();
+        return true;
     }
 }
