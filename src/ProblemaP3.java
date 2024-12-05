@@ -134,6 +134,14 @@ public class ProblemaP3 {
                 }
             }
         }
+
+        // Assign groups to disconnected nodes
+        for (int i = 0; i < n; i++) {
+            if (group[i] == -1) {
+                group[i] = groupId++;
+            }
+        }
+
         return group;
     }
 
