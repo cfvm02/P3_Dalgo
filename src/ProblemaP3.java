@@ -2,151 +2,153 @@ import java.io.*;
 import java.util.*;
 
 public class ProblemaP3 {
-    static class Node {
+    static class Nodo {
         int id, x, y;
-        Set<String> peptides;
+        Set<String> peptidos;
 
-        public Node(int id, int x, int y, Set<String> peptides) {
+        public Nodo(int id, int x, int y, Set<String> peptidos) {
             this.id = id;
             this.x = x;
             this.y = y;
-            this.peptides = peptides;
+            this.peptidos = peptidos;
         }
     }
 
-    static class Graph {
-        Map<Integer, List<Integer>> adjacencyList;
+    static class Grafo {
+        Map<Integer, List<Integer>> listaAdyacencia;
 
-        public Graph(int n) {
-            adjacencyList = new HashMap<>();
+        public Grafo(int n) {
+            listaAdyacencia = new HashMap<>();
             for (int i = 1; i <= n; i++) {
-                adjacencyList.put(i, new ArrayList<>());
+                listaAdyacencia.put(i, new ArrayList<>());
             }
         }
 
-        public void addEdge(int u, int v) {
-            adjacencyList.get(u).add(v);
-            adjacencyList.get(v).add(u);
+        public void agregarArista(int u, int v) {
+            listaAdyacencia.get(u).add(v);
+            listaAdyacencia.get(v).add(u);
         }
 
-        public List<Integer> getNeighbors(int u) {
-            return adjacencyList.get(u);
+        public List<Integer> obtenerVecinos(int u) {
+            return listaAdyacencia.get(u);
         }
 
-        public Set<int[]> getEdges() {
-            Set<int[]> edges = new HashSet<>();
-            for (int u : adjacencyList.keySet()) {
-                for (int v : adjacencyList.get(u)) {
-                    if (u < v) { // Ensure each edge is added only once
-                        edges.add(new int[]{u, v});
+        public Set<int[]> obtenerAristas() {
+            Set<int[]> aristas = new HashSet<>();
+            for (int u : listaAdyacencia.keySet()) {
+                for (int v : listaAdyacencia.get(u)) {
+                    if (u < v) { // Asegurar que cada arista se agrega solo una vez
+                        aristas.add(new int[]{u, v});
                     }
                 }
             }
-            return edges;
+            return aristas;
         }
     }
 
     public static void main(String[] args) throws IOException {
         try (
-            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(System.out))
+            BufferedReader lector = new BufferedReader(new InputStreamReader(System.in));
+            BufferedWriter escritor = new BufferedWriter(new OutputStreamWriter(System.out))
         ) {
-            int testCases = Integer.parseInt(reader.readLine().trim());
-            for (int t = 0; t < testCases; t++) {
-                handleSingleTestCase(reader, writer);
+            int casosPrueba = Integer.parseInt(lector.readLine().trim());
+            for (int t = 0; t < casosPrueba; t++) {
+                manejarCasoPrueba(lector, escritor);
             }
         }
     }
 
-    private static void handleSingleTestCase(BufferedReader reader, BufferedWriter writer) throws IOException {
-        String[] params = reader.readLine().trim().split(" ");
-        int n = Integer.parseInt(params[0]);
-        int d = Integer.parseInt(params[1]);
+    private static void manejarCasoPrueba(BufferedReader lector, BufferedWriter escritor) throws IOException {
+        String[] parametros = lector.readLine().trim().split(" ");
+        int n = Integer.parseInt(parametros[0]);
+        int d = Integer.parseInt(parametros[1]);
 
-        List<Node> nodes = readNodes(reader, n);
-        Graph graph = buildGraph(nodes, d);
+        List<Nodo> nodos = leerNodos(lector, n);
+        Grafo grafo = construirGrafo(nodos, d);
 
-        int[] groupAssignment = findMinimumCliqueCover(graph, n);
+        int[] asignacionGrupos = encontrarCubiertaCliqueMinima(grafo, n);
 
-        // Print results in the required format
+        // Imprimir resultados en el formato requerido
         for (int i = 1; i <= n; i++) {
-            writer.write(i + " " + groupAssignment[i]);
-            writer.newLine();
+            escritor.write(i + " " + asignacionGrupos[i]);
+            escritor.newLine();
         }
-        writer.flush();
+        escritor.flush();
     }
 
-    private static List<Node> readNodes(BufferedReader reader, int n) throws IOException {
-        List<Node> nodes = new ArrayList<>();
+    private static List<Nodo> leerNodos(BufferedReader lector, int n) throws IOException {
+        List<Nodo> nodos = new ArrayList<>();
         for (int i = 0; i < n; i++) {
-            String[] data = reader.readLine().trim().split(" ");
-            int id = Integer.parseInt(data[0]);
-            int x = Integer.parseInt(data[1]);
-            int y = Integer.parseInt(data[2]);
-            Set<String> peptides = new HashSet<>(Arrays.asList(data).subList(3, data.length));
-            nodes.add(new Node(id, x, y, peptides));
+            String[] datos = lector.readLine().trim().split(" ");
+            int id = Integer.parseInt(datos[0]);
+            int x = Integer.parseInt(datos[1]);
+            int y = Integer.parseInt(datos[2]);
+            Set<String> peptidos = new HashSet<>(Arrays.asList(datos).subList(3, datos.length));
+            nodos.add(new Nodo(id, x, y, peptidos));
         }
-        return nodes;
+        return nodos;
     }
 
-    private static Graph buildGraph(List<Node> nodes, int d) {
-        Graph graph = new Graph(nodes.size());
+    private static Grafo construirGrafo(List<Nodo> nodos, int d) {
+        Grafo grafo = new Grafo(nodos.size());
 
-        for (int i = 0; i < nodes.size(); i++) {
-            for (int j = i + 1; j < nodes.size(); j++) {
-                if (canConnect(nodes.get(i), nodes.get(j), d)) {
-                    graph.addEdge(nodes.get(i).id, nodes.get(j).id);
+        for (int i = 0; i < nodos.size(); i++) {
+            for (int j = i + 1; j < nodos.size(); j++) {
+                if (puedenConectar(nodos.get(i), nodos.get(j), d)) {
+                    grafo.agregarArista(nodos.get(i).id, nodos.get(j).id);
                 }
             }
         }
-        return graph;
+        return grafo;
     }
 
-    private static boolean canConnect(Node a, Node b, int d) {
-        double distance = Math.hypot(a.x - b.x, a.y - b.y);
-        boolean hasSharedPeptides = !Collections.disjoint(a.peptides, b.peptides);
-        return distance <= d && hasSharedPeptides;
+    private static boolean puedenConectar(Nodo a, Nodo b, int d) {
+        // Posible BUG: Asegurar que 'd' no sea negativo
+        double distancia = Math.hypot(a.x - b.x, a.y - b.y);
+        boolean tienePeptidosComunes = !Collections.disjoint(a.peptidos, b.peptidos);
+        return distancia <= d && tienePeptidosComunes;
     }
 
-    private static int[] findMinimumCliqueCover(Graph graph, int n) {
-        int[] groupAssignment = new int[n + 1];
-        Arrays.fill(groupAssignment, -1);
-        int currentGroup = 1;
+    private static int[] encontrarCubiertaCliqueMinima(Grafo grafo, int n) {
+        int[] asignacionGrupos = new int[n + 1];
+        Arrays.fill(asignacionGrupos, -1); // Inicializar todos los nodos como no asignados
+        int grupoActual = 1;
 
-        for (int node = 1; node <= n; node++) {
-            if (groupAssignment[node] == -1) { // If the node is not yet assigned
-                Set<Integer> clique = findClique(graph, node, groupAssignment);
-                for (int member : clique) {
-                    groupAssignment[member] = currentGroup; // Assign the current group to all members of the clique
+        for (int nodo = 1; nodo <= n; nodo++) {
+            if (asignacionGrupos[nodo] == -1) { // Si el nodo no está asignado aún
+                Set<Integer> clique = encontrarClique(grafo, nodo, asignacionGrupos);
+                for (int miembro : clique) {
+                    asignacionGrupos[miembro] = grupoActual; // Asignar el grupo actual a todos los miembros de la clique
                 }
-                currentGroup++;
+                grupoActual++;
             }
         }
-        return groupAssignment;
+        return asignacionGrupos;
     }
 
-    private static Set<Integer> findClique(Graph graph, int startNode, int[] groupAssignment) {
+    private static Set<Integer> encontrarClique(Grafo grafo, int nodoInicio, int[] asignacionGrupos) {
         Set<Integer> clique = new HashSet<>();
-        Queue<Integer> queue = new LinkedList<>();
-        queue.add(startNode);
+        Queue<Integer> cola = new LinkedList<>();
+        cola.add(nodoInicio);
 
-        while (!queue.isEmpty()) {
-            int node = queue.poll();
-            if (clique.contains(node)) continue;
-            clique.add(node);
+        while (!cola.isEmpty()) {
+            int nodo = cola.poll();
+            if (clique.contains(nodo)) continue; // Evitar ciclos
+            clique.add(nodo);
 
-            for (int neighbor : graph.getNeighbors(node)) {
-                if (groupAssignment[neighbor] == -1 && allInClique(graph, neighbor, clique)) {
-                    queue.add(neighbor);
+            for (int vecino : grafo.obtenerVecinos(nodo)) {
+                if (asignacionGrupos[vecino] == -1 && todosEnClique(grafo, vecino, clique)) {
+                    cola.add(vecino);
                 }
             }
         }
         return clique;
     }
 
-    private static boolean allInClique(Graph graph, int node, Set<Integer> clique) {
-        for (int member : clique) {
-            if (!graph.getNeighbors(member).contains(node)) {
+    private static boolean todosEnClique(Grafo grafo, int nodo, Set<Integer> clique) {
+        // Verificar si 'nodo' puede unirse a la clique
+        for (int miembro : clique) {
+            if (!grafo.obtenerVecinos(miembro).contains(nodo)) {
                 return false;
             }
         }
